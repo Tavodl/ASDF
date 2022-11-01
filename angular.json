@@ -125,6 +125,9 @@
   "defaultProject": "demo1",
   "cli": {
     "defaultCollection": "@angular-eslint/schematics",
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      "environment": "all"
+    }
   }
 }

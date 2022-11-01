@@ -6,6 +6,7 @@ import { AuthModel } from '../models/auth.model';
 import { AuthHTTPService } from './auth-http';
 import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 
 export type UserType = UserModel | undefined;
 
@@ -16,6 +17,7 @@ export class AuthService implements OnDestroy {
   // private fields
   private unsubscribe: Subscription[] = []; // Read more: => https://brianflove.com/2016/12/11/anguar-2-unsubscribe-observables/
   private authLocalStorageToken = `${environment.appVersion}-${environment.USERDATA_KEY}`;
+  private URL = environment.apiUrl
 
   // public fields
   currentUser$: Observable<UserType>;
@@ -33,7 +35,8 @@ export class AuthService implements OnDestroy {
 
   constructor(
     private authHttpService: AuthHTTPService,
-    private router: Router
+    private router: Router,
+    private HTTP : HttpClient
   ) {
     this.isLoadingSubject = new BehaviorSubject<boolean>(false);
     this.currentUserSubject = new BehaviorSubject<UserType>(undefined);
@@ -44,7 +47,7 @@ export class AuthService implements OnDestroy {
   }
 
   // public methods
-  login(email: string, password: string): Observable<UserType> {
+  login2(email: string, password: string): Observable<UserType> {
     this.isLoadingSubject.next(true);
     return this.authHttpService.login(email, password).pipe(
       map((auth: AuthModel) => {
@@ -58,6 +61,35 @@ export class AuthService implements OnDestroy {
       }),
       finalize(() => this.isLoadingSubject.next(false))
     );
+  }
+
+
+  login (username: string, password: string){
+    console.log(username, password)
+    this.isLoadingSubject.next(true);
+    this.getUserByToken()
+    let url = `${this.URL}/company/login`
+    //let url = `http://localhost:3200/company/login`
+    return this.HTTP.post(url, {username, password})
+    .pipe(
+      map ((user : UserModel | any )=>{
+        console.log(user);
+        
+        const auth = new AuthModel();
+        auth.authToken = user['authToken'];
+        auth.refreshToken = user['refreshToken'];
+        auth.expiresIn = new Date(Date.now() + 100 * 24 * 60 * 60 * 1000);
+        //console.log('--------------token servicio---------------------');
+        //console.log(auth);
+        this.setAuthFromLocalStorage(auth);
+      }),      
+      switchMap(() => this.getUserByToken()),
+      catchError((err) => {
+        console.error('err', err);
+        return of(undefined);
+      }),
+      finalize(() => this.isLoadingSubject.next(false))
+      )//End .pipe
   }
 
   logout() {
